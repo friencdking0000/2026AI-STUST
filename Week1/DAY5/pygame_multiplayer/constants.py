@@ -79,6 +79,33 @@ SUPER_PREFIX = "[卍煞氣a傳說卍]"
 SUPER_REGEN = 5             # 每次補血量
 SUPER_REGEN_INTERVAL = 0.15 # 補血間隔秒（≈33 HP/s）
 
+# 等級 / 經驗
+MAX_LEVEL = 100
+XP_HP_PICKUP = 10           # 撿血包獲得
+XP_BUFF_PICKUP = 20         # 撿 buff 道具獲得
+LEVEL_HP_BONUS = 5          # 每升一級 max_hp +5
+LEVEL_DAMAGE_BONUS = 1      # 每升一級 傷害 +1
+
+def xp_needed(level):
+    """升到下一級所需經驗（Level 1→2 需要 23，Level 99→100 需要 317）"""
+    return 20 + level * 3
+
+# 子彈階段（每 10 級一階，0~9）
+BULLET_TIER_SPEED_BONUS = [0, 40, 90, 150, 210, 280, 360, 450, 550, 700]
+BULLET_TIER_COLORS = [
+    (255,  80,  20),  # 0 紅
+    (255, 140,  60),  # 1 橘
+    (255, 210,  60),  # 2 黃
+    ( 80, 220,  80),  # 3 綠
+    ( 60, 220, 220),  # 4 青
+    ( 80, 120, 255),  # 5 藍
+    (200, 100, 220),  # 6 紫
+    (255, 100, 180),  # 7 粉
+    (220,  40,  40),  # 8 血紅
+    (255, 215,   0),  # 9 傳說金
+]
+BULLET_TIER_SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 14, 16]
+
 # Buff 顯示顏色與圖示字元（畫在道具上）
 BUFF_COLORS = {
     "hp":     (100, 220, 100),

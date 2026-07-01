@@ -26,6 +26,9 @@ from constants import (
     CHAT_LOG_MAX,
     SUPER_REGEN, SUPER_REGEN_INTERVAL,
     KILL_FEED_MAX,
+    MAX_LEVEL, XP_HP_PICKUP, XP_BUFF_PICKUP,
+    LEVEL_HP_BONUS, LEVEL_DAMAGE_BONUS, xp_needed,
+    BULLET_TIER_SPEED_BONUS,
 )
 
 HOST = "0.0.0.0"
@@ -116,14 +119,41 @@ def 取得射擊冷卻(p, now):
 
 def 套用道具(p, ptype, now):
     if ptype == "hp":
-        p["hp"] = min(MAX_HP, p["hp"] + PICKUP_HEAL)
+        p["hp"] = min(eff_max_hp(p), p["hp"] + PICKUP_HEAL)
         p["size_bonus"] = min(MAX_SIZE_BONUS, p["size_bonus"] + HP_SIZE_BONUS)
+        加經驗(p, XP_HP_PICKUP, now)
     else:
         p["buffs"][ptype] = now + BUFF_DURATION
+        加經驗(p, XP_BUFF_PICKUP, now)
 
 
 def 玩家半徑(p):
     return PLAYER_SIZE + p.get("size_bonus", 0)
+
+
+def eff_max_hp(p):
+    return MAX_HP + (p.get("level", 1) - 1) * LEVEL_HP_BONUS
+
+
+def eff_damage(p):
+    return BULLET_DAMAGE + (p.get("level", 1) - 1) * LEVEL_DAMAGE_BONUS
+
+
+def 加經驗(p, amount, now):
+    if p["level"] >= MAX_LEVEL:
+        return
+    p["xp"] += amount
+    while p["xp"] >= xp_needed(p["level"]) and p["level"] < MAX_LEVEL:
+        p["xp"] -= xp_needed(p["level"])
+        p["level"] += 1
+        p["hp"] = eff_max_hp(p)      # 升級時補滿
+        chat_log.append({
+            "author": "系統",
+            "text":   f"{p['id']} 升級到 Lv {p['level']}!",
+            "ts":     now,
+        })
+    if p["level"] >= MAX_LEVEL:
+        p["xp"] = 0
 
 
 def 打包玩家(p, now):
@@ -142,6 +172,12 @@ def 打包玩家(p, now):
         "buffs":         remaining,
         "super":         p.get("super", False),
         "rapid_forever": p.get("rapid_forever", False),
+        "speed_forever": p.get("speed_forever", False),
+        "level":         p.get("level", 1),
+        "xp":            p.get("xp", 0),
+        "xp_need":       xp_needed(p.get("level", 1)) if p.get("level", 1) < MAX_LEVEL else 0,
+        "max_hp":        eff_max_hp(p),
+        "damage":        eff_damage(p),
     }
 
 
@@ -201,11 +237,12 @@ def 遊戲Tick():
                     dy = p["y"] - b["y"]
                     hitr = 玩家半徑(p) + BULLET_RADIUS
                     if dx * dx + dy * dy < hitr * hitr:
-                        p["hp"] -= BULLET_DAMAGE
+                        killer = players.get(b["owner"])
+                        dmg = eff_damage(killer) if killer else BULLET_DAMAGE
+                        p["hp"] -= dmg
                         if p["hp"] <= 0:
                             p["hp"] = 0
                             p["alive"] = False
-                            killer = players.get(b["owner"])
                             if killer:
                                 加擊殺公告(killer, p, now)
                         bullets.remove(b)
@@ -340,6 +377,9 @@ def 處理單一連線(conn, cid, addr):
                             "super":         False,
                             "last_regen":    0,
                             "rapid_forever": False,
+                            "speed_forever": False,
+                            "level":         1,
+                            "xp":            0,
                         }
                         print(f"[{cid}] 加入為 {players[cid]['id']}")
 
@@ -355,17 +395,20 @@ def 處理單一連線(conn, cid, addr):
                             d = math.hypot(dx, dy)
                             if d > 0:
                                 p["shoot_cd_end"] = now + 取得射擊冷卻(p, now)
+                                tier = min(9, p["level"] // 10)
+                                bspeed = BULLET_SPEED + BULLET_TIER_SPEED_BONUS[tier]
                                 bullet_id_counter += 1
                                 bullets.append({
                                     "id":      bullet_id_counter,
                                     "owner":   cid,
                                     "x":       p["x"],
                                     "y":       p["y"],
-                                    "vx":      dx / d * BULLET_SPEED,
-                                    "vy":      dy / d * BULLET_SPEED,
+                                    "vx":      dx / d * bspeed,
+                                    "vy":      dy / d * bspeed,
                                     "t":       now,
                                     "homing":  now < p["buffs"].get("homing", 0),
                                     "rainbow": p.get("super", False),
+                                    "tier":    tier,
                                 })
 
                     elif t == "chat" and cid in players:
@@ -395,6 +438,24 @@ def 處理單一連線(conn, cid, addr):
                                 "text":   f"{p['id']} {state_txt} 快速射擊模式",
                                 "ts":     now,
                             })
+                        elif txt == "/跑快快":
+                            p["speed_forever"] = True
+                            chat_log.append({
+                                "author": "系統",
+                                "text":   f"{p['id']} 開啟 加速移動模式",
+                                "ts":     now,
+                            })
+                        elif txt == "/跑慢慢":
+                            p["speed_forever"] = False
+                            chat_log.append({
+                                "author": "系統",
+                                "text":   f"{p['id']} 關閉 加速移動模式",
+                                "ts":     now,
+                            })
+                        elif txt == "/變大":
+                            p["size_bonus"] = MAX_SIZE_BONUS
+                        elif txt == "/變小":
+                            p["size_bonus"] = 0
                         elif txt:
                             p["chat"] = txt
                             p["chat_time"] = now
@@ -403,7 +464,7 @@ def 處理單一連線(conn, cid, addr):
                     elif t == "respawn" and cid in players:
                         x, y = 隨機重生點()
                         p = players[cid]
-                        p["hp"] = MAX_HP
+                        p["hp"] = eff_max_hp(p)
                         p["alive"] = True
                         p["x"] = x
                         p["y"] = y

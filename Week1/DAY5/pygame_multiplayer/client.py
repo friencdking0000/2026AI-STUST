@@ -102,6 +102,9 @@ except Exception:
     big_font = pygame.font.Font(None, 26)
 clock = pygame.time.Clock()
 
+# 預設關掉 IME 文字輸入，避免 WASD 移動時跳出注音候選字視窗
+pygame.key.stop_text_input()
+
 
 def 畫玩家(surf, p, sx, sy, size=PLAYER_SIZE):
     col = tuple(p["color"])
@@ -156,21 +159,27 @@ try:
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if chat_active:
+                    # 控制鍵仍走 KEYDOWN；一般字元交給 TEXTINPUT 處理
                     if event.key == pygame.K_RETURN:
                         if chat_text.strip():
                             傳送({"type": "chat", "text": chat_text.strip()})
                         chat_text = ""
                         chat_active = False
+                        pygame.key.stop_text_input()
                     elif event.key == pygame.K_BACKSPACE:
                         chat_text = chat_text[:-1]
                     elif event.key == pygame.K_ESCAPE:
                         chat_text = ""
                         chat_active = False
-                    elif event.unicode and event.unicode.isprintable():
-                        chat_text += event.unicode
+                        pygame.key.stop_text_input()
                 else:
                     if event.key == pygame.K_RETURN:
                         chat_active = True
+                        # 開啟 IME 輸入模式，中文、日文才會透過 TEXTINPUT 送進來
+                        pygame.key.start_text_input()
+            elif event.type == pygame.TEXTINPUT and chat_active:
+                # 中文 / 英文 / 符號都會走這裡（IME 組合完才會送）
+                chat_text += event.text
 
         # 移動（只在非聊天模式下）
         if not chat_active:

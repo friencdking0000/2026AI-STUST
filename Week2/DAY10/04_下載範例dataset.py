@@ -43,6 +43,28 @@ DATASETS = {
         "version":   23,
         "描述":     "Chess Pieces 西洋棋 (12 類，693 張)",
     },
+    # ===== 人物相關 =====
+    # 工地帽子偵測（2 類：helmet / person，~5000 張）— 業界最經典 PPE 教學
+    "hardhat": {
+        "workspace": "joseph-nelson",
+        "project":   "hard-hat-workers",
+        "version":   2,
+        "描述":     "Hard Hat Workers 工地安全帽 (2 類，~5000 張)",
+    },
+    # 一般人物偵測（1 類：person）
+    "person": {
+        "workspace": "titulacin-tfg",
+        "project":   "person-detection-9a6mk",
+        "version":   1,
+        "描述":     "Person Detection 純人物偵測 (1 類)",
+    },
+    # 跌倒偵測（適合長照 / 安養院應用）
+    "fall": {
+        "workspace": "fall-detection-r7ips",
+        "project":   "fall-detection-3ubz1",
+        "version":   1,
+        "描述":     "Fall Detection 跌倒偵測 (2 類：fall / not-fall)",
+    },
 }
 
 use_this = "rps"    # ← 改這裡選 dataset

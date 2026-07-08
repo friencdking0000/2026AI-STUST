@@ -41,6 +41,25 @@
 
 ---
 
+## 找人物 dataset 的關鍵字整理
+
+| 用途 | 搜尋詞 |
+|---|---|
+| 一般人物 / 行人 | `person detection` / `pedestrian` |
+| 工地安全帽 (PPE) | `hard hat` / `PPE` / `safety vest` |
+| 臉部偵測 | `face detection` |
+| 口罩偵測 | `face mask` / `mask wearing` |
+| 跌倒偵測 (長照) | `fall detection` |
+| 姿態 / 動作 | `human pose` / `action recognition` |
+| 手勢 | `hand gesture` / `sign language` |
+| 情緒表情 | `emotion detection` / `facial expression` |
+| 打架 / 危險行為 | `fight detection` / `violence` |
+| 抽菸偵測 | `smoking detection` |
+
+**注意**：因為 Roboflow 版本會更新（v1 → v2 → v14 ...），下載前建議先到 Universe 頁面確認最新版號，改 `04_下載範例dataset.py` 的 `version` 欄位。
+
+---
+
 ## Step 4) 下載
 
 有兩個方式：

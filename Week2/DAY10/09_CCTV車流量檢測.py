@@ -79,11 +79,42 @@ per_class_count = defaultdict(int)   # {class_id: 該類累計數}
 已計數ID = set()
 track_歷史 = {}                     # {tid: (prev_x, prev_y)}
 
+def 開啟來源():
+    """優先用 STREAM_URL，失敗就 fallback 到 webcam"""
+    src = STREAM_URL
+    # 允許 STREAM_URL=0/1 這種數字表示 webcam
+    if src.isdigit():
+        src = int(src)
+        print(f"用 webcam {src}")
+    else:
+        print(f"嘗試連線串流：{src[:80]}...")
+
+    cap = cv2.VideoCapture(src)
+    if cap.isOpened():
+        return cap, src
+
+    print()
+    print("=" * 60)
+    print("串流連不上，可能原因：")
+    print("  1) auth token 過期 — 台中 CCTV 每個 session 換 token")
+    print("  2) 網段不通、DNS 錯誤、被防火牆擋")
+    print()
+    print("怎麼拿新的 URL：")
+    print("  1) 瀏覽器打開 https://motoretag.taichung.gov.tw/ATIS_TCC/Device/Showcctv?id=C000002")
+    print("  2) F12 → Network tab → 重整頁面")
+    print("  3) 過濾 mpjpeg → 找到 request 右鍵 Copy URL")
+    print("  4) 重跑：$env:STREAM_URL='貼新URL'; python 09_CCTV車流量檢測.py")
+    print()
+    print("Fallback: 改用 webcam...")
+    print("=" * 60)
+    cap = cv2.VideoCapture(0)
+    return cap, 0
+
+
 def 抓圖與推論():
-    print(f"連線串流：{STREAM_URL[:80]}...")
-    cap = cv2.VideoCapture(STREAM_URL)
+    cap, src = 開啟來源()
     if not cap.isOpened():
-        print("無法開啟串流")
+        print("Webcam 也開不了，放棄。")
         執行中[0] = False
         return
 
@@ -96,7 +127,7 @@ def 抓圖與推論():
             print("串流中斷，重連...")
             cap.release()
             time.sleep(2)
-            cap = cv2.VideoCapture(STREAM_URL)
+            cap = cv2.VideoCapture(src)
             continue
 
         H, W = frame.shape[:2]
